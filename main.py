@@ -2,14 +2,17 @@ from fastapi import FastAPI
 from sentence_transformers import SentenceTransformer
 import numpy as np
 import faiss
+import os
+
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 app = FastAPI(
     title="Бэкенд микросервис для семантического поиска",
     description="API для функций семантического поиска RAG-системы"
 )
 
-# Модель (multilingual)
-model = SentenceTransformer('intfloat/multilingual-e5-small')
+# Модель (легкая для бесплатного тарифа Render), хуже понимает русский язык
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
 # База знаний (пока в памяти)
 knowledge_base = [
@@ -22,16 +25,13 @@ knowledge_base = [
     "Пароль от wi-fi: 1234####"
 ]
 
-# Подготовка текста под e5 модель
-kb_texts = ["passage: " + text for text in knowledge_base]
-
 # 1. Создаем эмбеддинги базы
-kb_embeddings = model.encode(kb_texts)
+kb_embeddings = model.encode(knowledge_base)
 
 # 2. Переводим в float32 (обязательно для FAISS)
 kb_embeddings = np.array(kb_embeddings).astype("float32")
 
-# 3. НОРМАЛИЗАЦИЯ (чтобы работал cosine)
+# 3. Нормализация (чтобы работал cosine)
 faiss.normalize_L2(kb_embeddings)
 
 # 4. Создаём FAISS индекс
@@ -46,8 +46,8 @@ index.add(kb_embeddings)
 def embed(data: dict):
     text = data["text"]
 
-    embedding = model.encode(["query: " + text])
-    embedding = embedding.tolist()[0]
+    embedding = model.encode(text)
+    embedding = embedding.tolist()
 
     return {"embedding": embedding}
 
@@ -59,8 +59,8 @@ def search(data: dict):
     # всегда 3 результата
     top_k = 3
 
-    # query embedding (с префиксом)
-    query_embedding = model.encode(["query: " + query])
+    # query embedding
+    query_embedding = model.encode([query])
     query_embedding = np.array(query_embedding).astype("float32")
 
     # нормализация
