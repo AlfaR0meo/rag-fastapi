@@ -8,7 +8,7 @@ app = FastAPI(
     description="API для функций семантического поиска RAG-системы"
 )
 
-# Модель (multilingual)
+# Модель (multilingual e5)
 model = SentenceTransformer('intfloat/multilingual-e5-small')
 
 # База знаний (пока в памяти)
@@ -87,7 +87,3 @@ def search(data: dict):
         "query": query,
         "results": results
     }
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=10000)
